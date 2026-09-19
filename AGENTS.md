@@ -17,16 +17,20 @@ Validated in the current stage:
 - bit-identical results between one thread and the tested parallel configuration;
 - external acceleration (thrust) per body;
 - bulk position/sector and velocity read APIs;
+- stable C ABI with opaque handles for C#/Unity/FFI integration;
 - a 2000-body benchmark executable.
 
 ## Ownership map
 
 - `include/physics/PhysicsEngine.hpp`: public data contract, SoA API, thread-pool state,
   thrust controls, bulk output layout, and fixed timestep declaration.
+- `include/physics/PhysicsEngineCAPI.h`: C-compatible ABI contract for P/Invoke/FFI clients.
 - `src/PhysicsEngine.cpp`: LWC displacement, direct gravity, worker synchronization,
   normalization, Velocity Verlet, thrust composition, and bulk copies.
+- `src/PhysicsEngineCAPI.cpp`: opaque-handle adapter, validation, and C ABI error codes.
 - `src/main.cpp`: four-body manual demonstration with 1000 one-hour fixed steps.
 - `tests/PhysicsEngineTests.cpp`: focused behavior tests and serial/parallel equality test.
+- `tests/CAPI.t.cpp`: C ABI smoke test for handle lifetime, validation, thrust and bulk reads.
 - `tests/benchmark.cpp`: deterministic 2000-body throughput measurement.
 - `CMakeLists.txt`: C++20 targets and CTest registration.
 
@@ -55,6 +59,9 @@ spawn threads, or change vector capacity. Bulk APIs require caller-owned output
 buffers sized to `3 * bodyCount()` values. Callers must not invoke mutating methods
 concurrently with simulation or bulk reads.
 
+The C ABI follows the same rule: one handle is owned by one simulation thread. Bulk
+arrays are caller-owned and use three consecutive values per body (`x, y, z`).
+
 ## Development commands
 
 ```powershell
@@ -68,11 +75,13 @@ ctest --test-dir build -C Release --output-on-failure
 ## Next roadmap
 
 1. Add a public immutable snapshot or double-buffered exchange protocol for render/network consumers.
-2. Add optional spatial queries with caller-provided output buffers and explicit overflow reporting.
-3. Add allocation instrumentation and a benchmark matrix for 1, 2, 4, and hardware threads.
-4. Add compiler-specific SIMD diagnostics and optional AVX2 kernels behind a build flag.
-5. Add stronger orbital regression fixtures, energy/momentum drift metrics, and long-run accuracy checks.
-6. Consider Barnes-Hut or a hybrid near/far solver when `O(N^2)` no longer meets the target body count.
+2. Add a small C# P/Invoke adapter and a Unity/KSP host harness around the C ABI.
+3. Add optional spatial queries with caller-provided output buffers and explicit overflow reporting.
+4. Add allocation instrumentation and a benchmark matrix for 1, 2, 4, and hardware threads.
+5. Add compiler-specific SIMD diagnostics and optional AVX2 kernels behind a build flag.
+6. Add rigid-body orientation, angular velocity, inertia and torque before collision replacement.
+7. Add broad phase, narrow phase, contacts and joints; only then evaluate replacing PhysX contacts.
+8. Consider Barnes-Hut or a hybrid near/far solver when `O(N^2)` no longer meets the target body count.
 
 ## Agent rules
 
